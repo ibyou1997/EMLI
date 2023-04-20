@@ -1,0 +1,2 @@
+# EMLI
+Embedded Linux (EMLI)
