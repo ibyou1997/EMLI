@@ -1,34 +1,9 @@
 // Embedded Linux (EMLI)
 // University of Southern Denmark
 // ESP8266 Wifi client - Webserver - User interface 
-//
-// Intialised from example remote prorgram provied by the following:
 // Kjeld Jensen <kjen@sdu.dk> <kj@kjen.dk>
 // 2023-04-18, KJ, First version
 // inspired by https://docs.arduino.cc/tutorials/uno-wifi-rev2/uno-wifi-r2-hosting-a-webserver
-//
-// Modified example remote prorgram:
-// Group 10
-// 2023-04-20, ERH, Second version
-
-#include <ESP8266WiFi.h>
-#include <PubSubClient.h>
-
-// Wifi
-const char* WIFI_SSID = "EMLI";
-const char* WIFI_PASSWORD = "EMLIpassword";
-
-// MQTT
-const char* MQTT_SERVER = "mqtt.example.com";
-const char* MQTT_USERNAME = "username";
-const char* MQTT_PASSWORD = "password";
-const char* MQTT_TOPIC_LED = "myhome/led";
-const char* MQTT_TOPIC_WATER_PUMP_ALARM = "myhome/water_pump_alarm";
-const char* MQTT_TOPIC_PLANT_WATER_ALARM = "myhome/plant_water_alarm";
-const char* MQTT_TOPIC_SOIL_MOISTURE = "myhome/soil_moisture";
-
-WiFiClient wifiClient;
-PubSubClient mqttClient(wifiClient);
 
 // LED
 #define PIN_LED_RED     14
@@ -41,9 +16,14 @@ PubSubClient mqttClient(wifiClient);
 volatile int button_a_count;
 volatile unsigned long count_prev_time;
 
+// Wifi
+#include <ESP8266WiFi.h>
+const char* WIFI_SSID = "LADYBOY_XD";
+const char* WIFI_PASSWORD = "goldenshower";
+
 // Static IP address
-IPAddress IPaddress(192, 168, 0, 222);
-IPAddress gateway(192, 168, 0, 1);
+IPAddress IPaddress(192, 168, 10, 15);
+IPAddress gateway(192, 168, 10, 1);
 IPAddress subnet(255, 255, 255, 0);
 //IPAddress primaryDNS(1, 1, 1, 1); 
 //IPAddress secondaryDNS(8, 8, 8, 8); 
@@ -117,16 +97,11 @@ void setup()
   Serial.println("Starting webserver");
   Serial.println("");
   server.begin();
-
-  // connect to MQTT broker
-  //mqttClient.setServer(MQTT_SERVER, 1883);
-  //mqttClient.setCallback(mqttCallback);
-
 }
 
 void loop()
 {
-  // test for newæ client
+  // test for new client
   client = server.available();
   if (client) {
     Serial.println("New client");
