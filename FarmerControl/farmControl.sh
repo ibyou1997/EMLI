@@ -1,24 +1,34 @@
 #!/bin/bash
 
+if [ $# -eq 0 ]; then
+  echo "No ID provided. Please provide an ID. Ex: 001."
+  exit 1
+fi
+
+ID=$1
+
 BASE_URL="http://192.168.10.15"
 
 # MQTT broker
 MQTT_SERVER="localhost"
 MQTT_PORT=1883
-MQTT_USER="ladyboy"
-MQTT_PASSWORD="goldenshower"
+MQTT_USER="emli10"
+MQTT_PASSWORD="1Ba4W-D"
 
 MQTT_BROKER="$MQTT_SERVER:$MQTT_PORT"
 
-TOPIC_WA="wateralarm"
-TOPIC_PA="plantalarm"
-TOPIC_M="moisture"
-TOPIC_P="pump"
+TOPIC_WA="${ID}/plantwateralarm" # water alarm
+TOPIC_PA="${ID}/pumpalarm" # plant alarm
+TOPIC_M="${ID}/moisturealarm" # Moisture alarm
+TOPIC_P="${ID}/pump"
 
 # LED flags
 RED_FLAG=0
 GREEN_FLAG=0
 YELLOW_FLAG=0
+curl "${BASE_URL}/led/red/off"
+curl "${BASE_URL}/led/yellow/off"
+curl "${BASE_URL}/led/green/off"
 
 # Add a variable to count retries
 retryCount=0
@@ -27,70 +37,72 @@ maxRetries=1
 # WATER ABD PLANT ALARM
 # Function to handle received MQTT messages
 mqtt_message_handler() {
-  local topic="$1"
-  local message="$2"
+  # value
+  local message_wa="$1"
+  local message_pa="$2"
+  local message_m="$3"  
 
-  if [ "$topic" == "$TOPIC_WA" ] || [ "$topic" == "$TOPIC_PA" ]; then
-    if [ "$message" == "0" ] || [ "$message" == "1" ]; then
-      if [ "$topic" == "$TOPIC_WA" ]; then
-        echo "Water alarm triggered"
-      else
-        echo "Plant alarm triggered"
-      fi
-      if [ "$RED_FLAG" -eq 0 ]; then
-        curl "${BASE_URL}/led/red/on"
-        RED_FLAG=1
-      fi
-      if [ "$GREEN_FLAG" -eq 1 ]; then
-        curl "${BASE_URL}/led/green/off"
-        GREEN_FLAG=0
-      fi
-      if [ "$YELLOW_FLAG" -eq 1 ]; then
-        curl "${BASE_URL}/led/yellow/off"
-        YELLOW_FLAG=0
-      fi
-    elif [ "$message" == "2" ] || [ "$message" == "3" ]; then
-      if [ "$topic" == "$TOPIC_WA" ]; then
-        echo "Water alarm not triggered"
-      else
-        echo "Plant alarm not triggered"
-      fi
-      if [ "$RED_FLAG" -eq 1 ]; then
-        curl "${BASE_URL}/led/red/off"
-        RED_FLAG=0
-        if [ "$GREEN_FLAG" -eq 0 ]; then
-          curl "${BASE_URL}/led/green/on"
-          GREEN_FLAG=1
-        fi
-      fi
+  if [ "$message_wa" == "1" ] || [ "$message_pa" == "1" ]; then
+    if [ "$message_wa" == "1" ]; then
+      echo "Water alarm triggered"
+    else
+      echo "Plant alarm triggered"
     fi
-    
-# MOISTURE ALARM
-  elif [ "$topic" == "$TOPIC_M" ]; then
-    if [ "$message" == "1" ]; then
-      echo "Soil moisture below threshold"
-      if [ "$YELLOW_FLAG" -eq 0 ]; then
-        curl "${BASE_URL}/led/yellow/on"
-        YELLOW_FLAG=1
-      fi
-    elif [ "$message" == "0" ]; then
-      echo "Soil moisture above threshold"
-      if [ "$YELLOW_FLAG" -eq 1 ]; then
-        curl "${BASE_URL}/led/yellow/off"
-        YELLOW_FLAG=0
-      fi
-      if [ "$RED_FLAG" -eq 0 ]; then
+    if [ "$RED_FLAG" -eq 0 ]; then
+      curl "${BASE_URL}/led/red/on"
+      RED_FLAG=1
+    fi
+    if [ "$GREEN_FLAG" -eq 1 ]; then
+      curl "${BASE_URL}/led/green/off"
+      GREEN_FLAG=0
+    fi
+    if [ "$YELLOW_FLAG" -eq 1 ]; then
+      curl "${BASE_URL}/led/yellow/off"
+      YELLOW_FLAG=0
+    fi
+  else
+    echo "No alarms triggered"
+    if [ "$RED_FLAG" -eq 1 ]; then
+      curl "${BASE_URL}/led/red/off"
+      RED_FLAG=0
+      if [ "$GREEN_FLAG" -eq 0 ]; then
         curl "${BASE_URL}/led/green/on"
         GREEN_FLAG=1
       fi
     fi
   fi
+  
+  #if (( message_m < 20 )); then
+  #  message_m="1" # Trigger alerm
+  #else
+  #  message_m="0"
+  #fi 
+  
+# MOISTURE ALARM
+  if [ "$message_m" == "1" ]; then
+    echo "Soil moisture below threshold"
+    if [ "$YELLOW_FLAG" -eq 0 ]; then
+      curl "${BASE_URL}/led/yellow/on"
+      YELLOW_FLAG=1
+    fi
+  elif [ "$message_m" == "0" ]; then
+    echo "Soil moisture above threshold"
+    if [ "$YELLOW_FLAG" -eq 1 ]; then
+      curl "${BASE_URL}/led/yellow/off"
+      YELLOW_FLAG=0
+    fi
+    if [ "$RED_FLAG" -eq 0 ]; then
+      curl "${BASE_URL}/led/green/on"
+      GREEN_FLAG=1
+    fi
+  fi
+  
 }
 
 startPump() {
-  mosquitto_pub -h "${MQTT_BROKER}" -t "${TOPIC_P}" -m "start"
+  mosquitto_pub -h "${MQTT_SERVER}" -p "${MQTT_PORT}" -u "${MQTT_USER}" -P "${MQTT_PASSWORD}" -t "${TOPIC_P}" -m "start"
   sleep 10
-  mosquitto_pub -h "${MQTT_BROKER}" -t "${TOPIC_P}" -m "stop"
+  mosquitto_pub -h "${MQTT_SERVER}" -p "${MQTT_PORT}" -u "${MQTT_USER}" -P "${MQTT_PASSWORD}" -t "${TOPIC_P}" -m "stop"
 }
 
 
@@ -113,12 +125,17 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-
 while true; do
-  # Subscribe MQTT
-  mosquitto_sub -h "${MQTT_BROKER}" -t "${TOPIC_WA}" -t "${TOPIC_PA}" -t "${TOPIC_M}" | while read -r topic message; do
-    mqtt_message_handler "$topic" "$message"
+  topics=("${TOPIC_WA}" "${TOPIC_PA}" "${TOPIC_M}")
+  values=()
+
+  for topic in "${topics[@]}"; do
+    value=$(mosquitto_sub -h "${MQTT_SERVER}" -p "${MQTT_PORT}" -u "${MQTT_USER}" -P "${MQTT_PASSWORD}" -t "$topic" -C 1)
+    echo "topic: $topic, value: $value"
+    values+=("$value")
   done
+  
+  mqtt_message_handler "${values[@]}"
 
   button_status=$(curl -s "${BASE_URL}/button/a")
     if [ "$button_status" == "1" ]; then
