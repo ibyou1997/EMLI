@@ -109,7 +109,7 @@ while true; do
         time_difference_12_h=$((current_timestamp - saved_timestamp_12_h))
         time_difference__12_h=$((time_difference_12_h / 3600))
 
-        if [ "$time_difference__12_h" >= 1 ]; then
+        if [ "$time_difference__12_h" >= 2 ]; then
               
                 mosquitto_pub -h "${MQTT_SERVER}" -p "${MQTT_PORT}" -u "${MQTT_USER}" -P "${MQTT_PASSWORD}"  -t "$MQTT_ACTIVATE_PUMP" -m "$ACTIVATE_MSG" 
                 urrent_timestamp=$(date +"%Y-%m-%d %H:%M:%S")
