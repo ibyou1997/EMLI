@@ -102,23 +102,18 @@ while true; do
 
     if [ "$bAlarm" = false ]; then   
         ##################### 12 h thread #########################
-
-        bValid_file=false
-        if [ -s "$file_temp_12_h" ]; then
-            saved_time_12_h=$(tail -n 1 "$file_temp_12_h")
-            bValid_file=true
-        fi
-
-        current_timestamp=$(date -d "$current_time" +%s)
-        saved_timestamp_12_h=$(date -d "$saved_time_12_h" +%s)
+        
+        saved_timestamp_12_h=$(cat "$file_temp_12_h")
+        saved_timestamp_12_h=$(date -d "$saved_timestamp_12_h" +"%s")
+        current_timestamp=$(date +"%s")
         time_difference_12_h=$((current_timestamp - saved_timestamp_12_h))
         time_difference__12_h=$((time_difference_12_h / 3600))
-        
-        if [ "$time_difference__12_h" -ge 2 ] || [ "$bValid_file" = false ]; then
+
+        if [ "$time_difference__12_h" >= 1 ]; then
               
                 mosquitto_pub -h "${MQTT_SERVER}" -p "${MQTT_PORT}" -u "${MQTT_USER}" -P "${MQTT_PASSWORD}"  -t "$MQTT_ACTIVATE_PUMP" -m "$ACTIVATE_MSG" 
-                touch "$file_temp_12_h"
-                echo "$current_time" > "$file_temp_12_h"
+                urrent_timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+                echo "$current_timestamp" > "$file_temp_12_h"
                 echo "Time to run 12 h thread!"  
                 bActivate=true
         fi
@@ -127,7 +122,7 @@ while true; do
 
         if [ "$moisture_value" -lt 25 ]; then
             
-            
+            current_time=$(date +%H:%M)
             saved_time=$(tail -n 1 "$file_path_temp")
             #echo "Last run time from thread: $saved_time"
 
