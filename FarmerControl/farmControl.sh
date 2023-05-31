@@ -7,7 +7,7 @@ fi
 
 ID=$1
 
-BASE_URL="http://192.168.10.15"
+BASE_URL="http://192.168.87.15"
 
 # MQTT broker
 MQTT_SERVER="localhost"
@@ -20,7 +20,7 @@ MQTT_BROKER="$MQTT_SERVER:$MQTT_PORT"
 TOPIC_WA="${ID}/plantwateralarm" # water alarm
 TOPIC_PA="${ID}/pumpalarm" # plant alarm
 TOPIC_M="${ID}/moisturealarm" # Moisture alarm
-TOPIC_P="${ID}/pump"
+TOPIC_P="${ID}/buttonpress"
 
 # LED flags
 RED_FLAG=0
@@ -40,7 +40,7 @@ mqtt_message_handler() {
   # value
   local message_wa="$1"
   local message_pa="$2"
-  local message_m="$3"  
+  local message_m="$3"
 
   if [ "$message_wa" == "1" ] || [ "$message_pa" == "1" ]; then
     if [ "$message_wa" == "1" ]; then
@@ -56,10 +56,6 @@ mqtt_message_handler() {
       curl "${BASE_URL}/led/green/off"
       GREEN_FLAG=0
     fi
-    if [ "$YELLOW_FLAG" -eq 1 ]; then
-      curl "${BASE_URL}/led/yellow/off"
-      YELLOW_FLAG=0
-    fi
   else
     echo "No alarms triggered"
     if [ "$RED_FLAG" -eq 1 ]; then
@@ -71,19 +67,17 @@ mqtt_message_handler() {
       fi
     fi
   fi
-  
-  #if (( message_m < 20 )); then
-  #  message_m="1" # Trigger alerm
-  #else
-  #  message_m="0"
-  #fi 
-  
-# MOISTURE ALARM
+
+  # MOISTURE ALARM
   if [ "$message_m" == "1" ]; then
     echo "Soil moisture below threshold"
     if [ "$YELLOW_FLAG" -eq 0 ]; then
       curl "${BASE_URL}/led/yellow/on"
       YELLOW_FLAG=1
+    fi
+    if [ "$GREEN_FLAG" -eq 1 ]; then
+      curl "${BASE_URL}/led/green/off"
+      GREEN_FLAG=0
     fi
   elif [ "$message_m" == "0" ]; then
     echo "Soil moisture above threshold"
@@ -96,13 +90,15 @@ mqtt_message_handler() {
       GREEN_FLAG=1
     fi
   fi
-  
+
 }
 
 startPump() {
-  mosquitto_pub -h "${MQTT_SERVER}" -p "${MQTT_PORT}" -u "${MQTT_USER}" -P "${MQTT_PASSWORD}" -t "${TOPIC_P}" -m "start"
-  sleep 10
-  mosquitto_pub -h "${MQTT_SERVER}" -p "${MQTT_PORT}" -u "${MQTT_USER}" -P "${MQTT_PASSWORD}" -t "${TOPIC_P}" -m "stop"
+  mosquitto_pub -h "${MQTT_SERVER}" -p "${MQTT_PORT}" -u "${MQTT_USER}" -P "${MQTT_PASSWORD}" -t "${TOPIC_P}" -m "1"
+}
+
+noPress() {
+  mosquitto_pub -h "${MQTT_SERVER}" -p "${MQTT_PORT}" -u "${MQTT_USER}" -P "${MQTT_PASSWORD}" -t "${TOPIC_P}" -m "0"
 }
 
 
@@ -134,18 +130,16 @@ while true; do
     echo "topic: $topic, value: $value"
     values+=("$value")
   done
-  
+
   mqtt_message_handler "${values[@]}"
 
-  button_status=$(curl -s "${BASE_URL}/button/a")
-    if [ "$button_status" == "1" ]; then
-      sleep 2
-      button_status=$(curl -s "${BASE_URL}/button/a")
-      if [ "$button_status" == "1" ]; then
-        echo "Button pressed, starting pump"
-        startPump
-      fi
-    fi
+  button_status=$(curl -s "${BASE_URL}/button/a/count")
+  if [ "$button_status" -ne "0" ]; then
+    echo "Button pressed, starting pump"
+    startPump
+  else
+    noPress
+  fi
 
 
 
@@ -165,7 +159,5 @@ while true; do
   else
     retryCount=0
   fi
-
-  sleep 1s
+  sleep 1
 done
-
