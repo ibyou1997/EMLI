@@ -1,4 +1,4 @@
-# Embedded Linux - Mini Project: Plant watering System
+# Embedded Linux - Mini Project about Plant watering System
 
 ## Introduction
 
