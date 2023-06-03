@@ -28,4 +28,3 @@ while true; do
 	mosquitto_pub -h "${MQTT_SERVER}" -p "${MQTT_PORT}" -u "${MQTT_USER}" -P "${MQTT_PASSWORD}" -t "${ID}"/light -m ${strarr[3]}
 	echo "${strarr[0]}, ${strarr[1]}, ${strarr[2]}, ${strarr[3]}"
 done
-
