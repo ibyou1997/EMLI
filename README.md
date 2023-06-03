@@ -1,7 +1,3 @@
-# EMLI
-Embedded Linux (EMLI)
-
-
 # Embedded Linux - Mini Project: Plant watering System
 
 ## Introduction
