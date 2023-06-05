@@ -30,10 +30,11 @@ def pump_request():
         select_result = uselect.select([stdin], [], [], 0)
     return result
 while True:
-    led_builtin.toggle()
     if pump_request():
+        led_builtin.high()
         pump_control.high()
         utime.sleep(1)
+        led_builtin.low()
         pump_control.low()
     else:
         utime.sleep(1)
